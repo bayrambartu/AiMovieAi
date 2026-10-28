@@ -1,0 +1,38 @@
+services:
+  db:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: aimovieai
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-aimovieai_local}
+      POSTGRES_DB: aimovieai
+    ports:
+      - "127.0.0.1:5434:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aimovieai -d aimovieai"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+  app:
+    build: .
+    profiles: ["full"]
+    environment:
+      DATABASE_URL: postgres://aimovieai:${POSTGRES_PASSWORD:-aimovieai_local}@db:5432/aimovieai?sslmode=disable
+      TMDB_BASE_URL: ${TMDB_BASE_URL:-https://api.themoviedb.org/3}
+      TMDB_TOKEN: ${TMDB_TOKEN:-}
+      ADDR: 0.0.0.0:8080
+      FRONTEND_DIST: /app/web
+      OLLAMA_URL: http://host.docker.internal:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen3:4b}
+    ports:
+      - "127.0.0.1:8080:8080"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+volumes:
+  postgres_data:

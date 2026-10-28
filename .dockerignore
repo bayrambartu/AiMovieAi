@@ -1,0 +1,13 @@
+.git
+.env
+.env.*
+.local
+**/node_modules
+**/dist
+backend/aimovieai
+*.log
+
+**/*.cookies
+**/*.pem
+**/*.key
+**/*.dump

@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: aimovieai
+          POSTGRES_PASSWORD: ci_test_only
+          POSTGRES_DB: aimovieai_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U aimovieai -d aimovieai_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgres://aimovieai:ci_test_only@127.0.0.1:5432/aimovieai_test?sslmode=disable
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+      - name: Test with PostgreSQL and race detection
+        working-directory: backend
+        run: go test -race -v ./...
+      - name: Vet
+        working-directory: backend
+        run: go vet ./...
+      - name: Build API
+        working-directory: backend
+        run: go build ./...
+
+  frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install locked dependencies
+        working-directory: frontend
+        run: npm ci --no-audit --no-fund
+      - name: Build
+        working-directory: frontend
+        run: npm run build
+      - name: Verify development and preview API proxy
+        working-directory: frontend
+        run: npm run test:proxy

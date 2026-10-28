@@ -1,0 +1,17 @@
+.env
+.env.*
+!.env.example
+.local/
+node_modules/
+frontend/dist/
+backend/aimovieai
+*.log
+.DS_Store
+
+# Local database exports and credentials
+*.cookies
+*.pem
+*.key
+*.dump
+*.sql.gz
+coverage.out
